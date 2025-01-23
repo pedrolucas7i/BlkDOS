@@ -3,17 +3,18 @@
 **BLKDOS** is a server program that blocks suspicious connections and potential DOS attacks
 
 ### Going to be tested in these OS's
-![Debian Logo](/images/Debian-logo.jpg)
-- **Debian**
+<br>
+
+- ![Debian](https://img.shields.io/badge/Debian-black?style=flat&logo=debian&logoColor=%23A81D33&labelColor=white)
   - Version: `12`
   - Desktop Mode: CLI
+<br>
 
-![Ubuntu Server Logo](/images/Ubuntu-Server-Logo.jpg)
-- **Ubuntu Server**
+- ![Static Badge](https://img.shields.io/badge/Ubuntu-black?style=flat&logo=ubuntu&logoColor=white&labelColor=%23E95420)
   - Version: `24.04.1 LTS`
   - Desktop Mode: CLI
+<br>
 
-![Windows 11 Logo](/images/Windows-11-Logo.png)
 - **Windows**
   - Version: `10/11`
   - Desktop Mode: GUI
