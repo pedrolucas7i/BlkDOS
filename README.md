@@ -24,5 +24,9 @@
 ### How It Works
 The program will cancel the connections not recognized by blocking the IP address of the external machine that is having unusual actions or/and traffic. Using a conf file you are able to insert mannualy the hosts that are more aggressive to give the app the indications that is normal a connection
 
+### ScreenShots
+![ScreenShot 1 (23-01-2025)](/images/Captura%20de%20ecrã%202025-01-23%20195238.png)
+
+
 ## Credits
 - [Pedro Lucas](https://github.com/pedrolucas7i)

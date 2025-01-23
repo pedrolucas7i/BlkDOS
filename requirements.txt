@@ -1,2 +1,2 @@
 psutil
-socket
+windows-curses
