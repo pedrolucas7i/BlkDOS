@@ -200,7 +200,7 @@ def bloquear_ip_firewall(ip):
                 print("Sistema operativo não reconhecido! (Tentando comando GNU Linux)")
                 subprocess.run(["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"], check=True)
                 print(f"IP {ip} bloqueado no firewall")
-   except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError as e:
         print(f"Erro ao bloquear o IP {ip}: {e}")
 
 # Função para desbloquear um IP no firewall
