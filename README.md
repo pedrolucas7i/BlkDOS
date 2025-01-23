@@ -17,14 +17,14 @@
   - Desktop Mode: CLI
 <br>
 
-- **Zorin OS**
+- **Zorin OS** ✅
   - Version: `17.2`
   - Desktop Mode: GUI
 <br>
 
 - **Windows**
   - Version: `10/11`
-  - Desktop Mode: GUI  
+  - Desktop Mode: GUI
 <br>
 
 ### How It Works
