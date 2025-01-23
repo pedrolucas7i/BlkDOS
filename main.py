@@ -1,4 +1,5 @@
 import psutil
+import platform
 import socket
 import curses
 from datetime import datetime
@@ -187,18 +188,37 @@ def listar_conexoes(window, dados):
 # Função para bloquear um IP usando iptables no Linux
 def bloquear_ip_firewall(ip):
     try:
-        # Comando para bloquear um IP usando iptables
-        subprocess.run(["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"], check=True)
-        print(f"IP {ip} bloqueado no firewall.")
-    except subprocess.CalledProcessError as e:
+        sistema = platform.system().lower()
+        if (sistema == "linux"):
+                # Comando para bloquear um IP usando iptables
+                subprocess.run(["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"], check=True)
+                print(f"IP {ip} bloqueado no firewall.")
+        elif (sistema == "windows"):
+                subprocess.run(["netsh", "advfirewall", "firewall", "add", "rule", "name=\"Bloqueio Temp\"", "dir=in", "action=block", f"remoteip={ip}"], check=True)
+                print(f"IP {ip} bloqueado no firewall")
+        else:
+                print("Sistema operativo não reconhecido! (Tentando comando GNU Linux)")
+                subprocess.run(["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"], check=True)
+                print(f"IP {ip} bloqueado no firewall")
+   except subprocess.CalledProcessError as e:
         print(f"Erro ao bloquear o IP {ip}: {e}")
 
 # Função para desbloquear um IP no firewall
 def desbloquear_ip_firewall(ip):
     try:
-        # Comando para desbloquear um IP usando iptables
-        subprocess.run(["sudo", "iptables", "-D", "INPUT", "-s", ip, "-j", "DROP"], check=True)
-        print(f"IP {ip} desbloqueado no firewall.")
+        sistema = platform.system().lower()
+        if (sistema == "linux"):
+                # Comando para desbloquear um IP usando iptables
+                subprocess.run(["sudo", "iptables", "-D", "INPUT", "-s", ip, "-j", "DROP"], check=True)
+                print(f"IP {ip} desbloqueado no firewall.")
+        elif (sistema == "windows"):
+                subprocess.run(["netsh", "advfirewall", "firewall", "delete", "rule", "name=\"Bloqueio Temp\""])
+                print(f"IP {ip} desbloqueado no firewall")
+        else:
+                print("Sistema operativo não reconhecido! (Tentando comando GNU Linux)")
+                subprocess.run(["sudo", "iptables", "-D", "INPUT", "-s", ip, "-j", "DROP"], check=True)
+                print(f"IP {ip} desbloqueado no firewall.")
+
     except subprocess.CalledProcessError as e:
         print(f"Erro ao desbloquear o IP {ip}: {e}")
 
