@@ -153,6 +153,7 @@ def atualizar_tcp_conexao(ip, pacote_tcp, porta_origem, porta_destino):
 def listar_conexoes(window, dados):
     """Exibe as conexões e pacotes capturados no terminal."""
     window.clear()
+    max_lines, max_cols = curses.LINES, curses.COLS  # Tamanho do terminal
     header = f"{'IP':48} {'Protocolo':<10} {'Conexões':<10} {'Última Conexão':<22} {'Local':<48} {'Remoto':<48}"
     window.addstr(0, 0, header)
     window.addstr(1, 0, "=" * len(header))
@@ -165,12 +166,11 @@ def listar_conexoes(window, dados):
         local = info["local"]
         remoto = info["remoto"]
         line = f"{ip:<48} {protocolo:<10} {conexoes:<10} {ultima_conexao:<22} {local:<48} {remoto:<48}"
+        if len(line) > max_cols:
+            line = line[:max_cols - 3] + "..."  # Trunca a linha
+
         window.addstr(row, 0, line)
         row += 1
-
-        # Evita exceder o tamanho da janela
-        if row >= curses.LINES - 1:
-            break
 
     # Exibir as conexões TCP detalhadas
     window.addstr(row + 2, 0, "Conexões TCP (estado):")
@@ -189,19 +189,19 @@ def listar_conexoes(window, dados):
 def bloquear_ip_firewall(ip):
     try:
         sistema = platform.system().lower()
-        if (sistema == "linux"):
-                # Comando para bloquear um IP usando iptables
-                subprocess.run(["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"], check=True)
-                print(f"IP {ip} bloqueado no firewall.")
-        elif (sistema == "windows"):
-                subprocess.run(["netsh", "advfirewall", "firewall", "add", "rule", "name=\"Bloqueio Temp\"", "dir=in", "action=block", f"remoteip={ip}"], check=True)
-                print(f"IP {ip} bloqueado no firewall")
+        if sistema == "linux":
+            subprocess.run(["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"], check=True)
+            print(f"IP {ip} bloqueado no firewall.")
+        elif sistema == "windows":
+            subprocess.run(["netsh", "advfirewall", "firewall", "add", "rule", "name=\"Bloqueio Temp\"",
+                            "dir=in", "action=block", f"remoteip={ip}"], check=True)
+            print(f"IP {ip} bloqueado no firewall.")
         else:
-                print("Sistema operativo não reconhecido! (Tentando comando GNU Linux)")
-                subprocess.run(["sudo", "iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"], check=True)
-                print(f"IP {ip} bloqueado no firewall")
+            raise ValueError("Sistema operacional não suportado.")
     except subprocess.CalledProcessError as e:
-        print(f"Erro ao bloquear o IP {ip}: {e}")
+        print(f"Erro ao executar comando de bloqueio: {e}")
+    except ValueError as ve:
+        print(ve)
 
 # Função para desbloquear um IP no firewall
 def desbloquear_ip_firewall(ip):
@@ -255,7 +255,16 @@ def configurar_sudoers():
 
 # Função principal
 def main(stdscr):
-    configurar_sudoers()
+    
+    max_lines, max_cols = curses.LINES, curses.COLS  # Tamanho do terminal
+    header = f"{'IP':48} {'Protocolo':<10} {'Conexões':<10} {'Última Conexão':<22} {'Local':<48} {'Remoto':<48}"
+    if (max_cols < len(str(header))):
+        print("Largura do terminal insuficiente!")
+        return
+    
+    sistema = platform.system().lower()
+    if (sistema == "linux"):
+            configurar_sudoers()
     curses.curs_set(0)  # Esconde o cursor
     stdscr.nodelay(True)  # Configura o terminal para não bloquear entradas
     stdscr.timeout(1000)  # Atualiza a tela a cada 1 segundo
