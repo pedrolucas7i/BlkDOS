@@ -8,9 +8,24 @@ import threading
 from collections import defaultdict
 import subprocess
 import os
+import requests
 
 LOG_FILE = "ips.log"
 CONFIG_FILE = "limites_config.txt"
+
+def obter_geolocalizacao(ip):
+    """ Obtém a geolocalização do IP usando a API ip-api.com """
+    try:
+        response = requests.get(f"http://ip-api.com/json/{ip}")
+        data = response.json()
+        
+        if data["status"] == "success":
+            return f"{data['city']}, {data['regionName']}, {data['country']}"
+        else:
+            return "Localização desconhecida"
+    except Exception as e:
+        print(f"Erro ao obter localização de {ip}: {e}")
+        return "Erro na API"
 
 # Função para ler o arquivo de configuração de limites
 def ler_configuracoes(arquivo):
@@ -41,9 +56,11 @@ limites_diarios = ler_configuracoes(CONFIG_FILE)
 pacotes_por_ip = defaultdict(lambda: {"ICMP": 0, "TCP": 0, "UDP": 0})
 conexoes_tcp = defaultdict(lambda: {"estado": "CLOSED", "pacotes": 0, "primeira_conexao": None, "ultima_conexao": None, "portas": set()})
 
+
+"""
 # Função para carregar dados do arquivo LOG_FILE
 def carregar_dados_do_arquivo():
-    """Carrega os dados do arquivo LOG_FILE e retorna como dicionário."""
+    # Carrega os dados do arquivo LOG_FILE e retorna como dicionário.
     dados = {}
     try:
         with open(LOG_FILE, "r") as f:
@@ -66,6 +83,7 @@ def carregar_dados_do_arquivo():
     except FileNotFoundError:
         pass
     return dados
+"""
 
 # Função para salvar dados no arquivo
 def salvar_dados_no_arquivo(dados):
@@ -77,21 +95,21 @@ def salvar_dados_no_arquivo(dados):
 
 # Função para atualizar os dados
 def atualizar_dados(dados, ip, protocolo, local, remoto):
-    """Atualiza os dados para o IP fornecido."""
+    """Atualiza os dados para o IP fornecido, incluindo geolocalização."""
     agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if ip in dados:
-        dados[ip]["conexoes"] += 1
-        dados[ip]["ultima_conexao"] = agora
-        dados[ip]["local"] = local
-        dados[ip]["remoto"] = remoto
-    else:
+
+    if ip not in dados:
         dados[ip] = {
             "protocolo": protocolo,
             "conexoes": 1,
             "ultima_conexao": agora,
             "local": local,
             "remoto": remoto,
+            "geolocalizacao": obter_geolocalizacao(ip)  # Obtém a geolocalização
         }
+    else:
+        dados[ip]["conexoes"] += 1
+        dados[ip]["ultima_conexao"] = agora
 
 # Função que captura pacotes de rede
 def capturar_pacotes(window, dados):
@@ -124,7 +142,8 @@ def capturar_pacotes(window, dados):
             # Verifica se o número de pacotes excede o limite para aquele protocolo
             limite = limites_diarios.get(protocolo, None)
             if limite is not None and pacotes_por_ip[ip_origem][protocolo] > limite:
-                bloquear_ip_firewall(ip_origem)
+                print(f"Blocking {ip_origem}")
+                #bloquear_ip_firewall(ip_origem)
 
     # Captura todos os pacotes IP (filtrando ICMP, TCP, UDP)
     sniff(filter="ip", prn=processar_pacote, store=False)
@@ -153,37 +172,17 @@ def atualizar_tcp_conexao(ip, pacote_tcp, porta_origem, porta_destino):
 def listar_conexoes(window, dados):
     """Exibe as conexões e pacotes capturados no terminal."""
     window.clear()
-    max_lines, max_cols = curses.LINES, curses.COLS  # Tamanho do terminal
-    header = f"{'IP':48} {'Protocolo':<10} {'Conexões':<10} {'Última Conexão':<22} {'Local':<48} {'Remoto':<48}"
+    header = f"{'IP':48} {'Protocolo':<10} {'Conexões':<10} {'Última Conexão':<22} {'Localização':<45} {'Local':<48} {'Remoto':<48}"
     window.addstr(0, 0, header)
     window.addstr(1, 0, "=" * len(header))
 
     row = 2
     for ip, info in sorted(dados.items()):
-        protocolo = info["protocolo"]
-        conexoes = info["conexoes"]
-        ultima_conexao = info["ultima_conexao"]
-        local = info["local"]
-        remoto = info["remoto"]
-        line = f"{ip:<48} {protocolo:<10} {conexoes:<10} {ultima_conexao:<22} {local:<48} {remoto:<48}"
-        if len(line) > max_cols:
-            line = line[:max_cols - 3] + "..."  # Trunca a linha
-
+        geolocalizacao = info.get("geolocalizacao", "N/A")  # Obtém a localização armazenada
+        line = f"{ip:<48} {info['protocolo']:<10} {info['conexoes']:<10} {info['ultima_conexao']:<22} {geolocalizacao:<45} {info['local']:<48} {info['remoto']:<48}"
         window.addstr(row, 0, line)
         row += 1
 
-    # Exibir as conexões TCP detalhadas
-    window.addstr(row + 2, 0, "Conexões TCP (estado):")
-    row += 3
-    for (ip, porta_origem, porta_destino), dados_conexao in conexoes_tcp.items():
-        estado = dados_conexao["estado"]
-        pacotes = dados_conexao["pacotes"]
-        primeira_conexao = dados_conexao["primeira_conexao"]
-        ultima_conexao = dados_conexao["ultima_conexao"]
-        line = f"{ip} {porta_origem}->{porta_destino} Estado: {estado} Pacotes: {pacotes} "
-        line += f"Primeira Conexão: {primeira_conexao} Última Conexão: {ultima_conexao}"
-        window.addstr(row, 0, line)
-        row += 1
 
 # Função para bloquear um IP usando iptables no Linux
 def bloquear_ip_firewall(ip):
@@ -268,8 +267,7 @@ def main(stdscr):
     curses.curs_set(0)  # Esconde o cursor
     stdscr.nodelay(True)  # Configura o terminal para não bloquear entradas
     stdscr.timeout(1000)  # Atualiza a tela a cada 1 segundo
-
-    dados = carregar_dados_do_arquivo()  # Carrega dados do arquivo ao iniciar
+    dados = {}
 
     # Inicia a captura de pacotes em uma thread separada
     thread_pacotes = threading.Thread(target=capturar_pacotes, args=(stdscr, dados,), daemon=True)
